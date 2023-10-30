@@ -1,0 +1,27 @@
+jobs:
+    -   job: Mobile
+        pool:
+            vmImage: 'macOS-latest'
+        steps:
+        - task: FlutterInstall@0
+          inputs:
+            mode: 'auto'
+            channel: 'stable'
+            version: 'custom'
+            customVersion: '3.0.5'
+        - task: FlutterBuild@0
+          inputs:
+            target: 'apk'
+            projectDirectory: 'gsc_app/'
+            flutterDirectory: '31'
+            debugMode: true
+        - task: CopyFiles@2
+          inputs:
+            contents: '**/*.apk'
+            targetFolder: '$(build.artifactStagingDirectory)'
+            OverWrite: true
+
+        - task: PublishBuildArtifacts@1
+          inputs:
+            artifactName: 'drop'
+            
