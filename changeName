@@ -1,0 +1,70 @@
+# This is an example Starter pipeline configuration
+# Use a skeleton to build, test and deploy using manual and parallel steps
+# -----
+# You can specify a custom docker image from Docker Hub as your build environment.
+pipelines:
+  # branches:
+  #   '{master}':
+  custom:
+    android-dev-deployment:
+      - step:
+          name: APK Assembling
+          image: ghcr.io/cirruslabs/flutter:stable
+          caches:
+            - gradle
+          script:
+            - flutter pub get
+            - echo "Building APK"
+            - flutter build apk --debug
+            - VERSION_CODE=$($ANDROID_HOME/build-tools/33*/aapt dump badging build/app/outputs/apk/debug/app-debug.apk | grep versionCode | sed "s/.*versionCode='\([0-9]*\)'.*/\1/")
+            - VERSION_NAME=$($ANDROID_HOME/build-tools/33*/aapt dump badging build/app/outputs/apk/debug/app-debug.apk | grep versionName | sed "s/.*versionName='\([0-9]*\.[0-9]*\.[0-9]*\)'.*/\1/")
+            - APP_LABEL=$($ANDROID_HOME/build-tools/33*/aapt dump badging build/app/outputs/apk/debug/app-debug.apk | grep 'application-label:' | sed "s/application-label:'\(.*\)'/\1/")
+            - APP_NAME="$APP_LABEL-v$VERSION_NAME-b$VERSION_CODE"
+            - echo "export APP_NAME='$APP_NAME'" >> set_env.sh
+            - mv build/app/outputs/apk/debug/app-debug.apk "build/app/outputs/apk/debug/$APP_NAME.apk"
+          artifacts:
+          - set_env.sh
+          - build/app/outputs/apk/debug/*.apk
+      - step:
+          name: Installing node.js and npm appcenter-cli
+          image: node:14.18.0
+          script:
+           - echo "Deploying APK to AppCenter"
+           - npm install
+           - npm install -g appcenter-cli
+           - cat set_env.sh
+           - source set_env.sh
+           - echo "App Name is $APP_NAME"
+           - appcenter distribute release --group Collaborators --file "build/app/outputs/apk/debug/$APP_NAME.apk" --release-notes "" --app AgmoSierra/Samsung-SSS-1 --token "c619f459abbfc3cc7fc9fdccd3aca4e3e50d5452" --silent
+    android-prod-deployment:
+      - step:
+          name: APK Assembling
+          image: ghcr.io/cirruslabs/flutter:stable
+          caches:
+            - gradle
+          script:
+            - flutter pub get
+            - echo "Building APK"
+            - flutter build apk --release
+            - VERSION_CODE=$($ANDROID_HOME/build-tools/33*/aapt dump badging build/app/outputs/apk/release/app-release.apk | grep versionCode | sed "s/.*versionCode='\([0-9]*\)'.*/\1/")
+            - VERSION_NAME=$($ANDROID_HOME/build-tools/33*/aapt dump badging build/app/outputs/apk/release/app-release.apk | grep versionName | sed "s/.*versionName='\([0-9]*\.[0-9]*\.[0-9]*\)'.*/\1/")
+            - APP_LABEL=$($ANDROID_HOME/build-tools/33*/aapt dump badging build/app/outputs/apk/release/app-release.apk | grep 'application-label:' | sed "s/application-label:'\(.*\)'/\1/")
+            - APP_NAME="$APP_LABEL-v$VERSION_NAME-b$VERSION_CODE"
+            - echo "export APP_NAME='$APP_NAME'" >> set_env.sh
+            - mv build/app/outputs/apk/release/app-release.apk "build/app/outputs/apk/release/$APP_NAME.apk"
+          artifacts:
+          - set_env.sh
+          - build/app/outputs/apk/release/*.apk
+      - step:
+          name: Installing node.js and npm appcenter-cli
+          image: node:14.18.0
+          script:
+           - echo "Deploying APK to AppCenter"
+           - npm install
+           - npm install -g appcenter-cli 
+           - cat set_env.sh
+           - source set_env.sh
+           - echo "App Name is $APP_NAME"
+           - appcenter distribute release --group Collaborators --file "build/app/outputs/apk/release/$APP_NAME.apk" --release-notes "" --app AgmoSierra/Samsung-SSS-1 --token "c619f459abbfc3cc7fc9fdccd3aca4e3e50d5452" --silent
+        
+  
